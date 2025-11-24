@@ -217,6 +217,19 @@ const nextConfig: NextConfig = {
           {
             key: 'Access-Control-Allow-Credentials',
             value: 'true'
+          },
+          // Headers PWA
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block'
           }
         ]
       }

@@ -1,62 +1,161 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2 } from 'lucide-react';
-import { getClientes, addCliente, deleteCliente } from '@/lib/storage';
-import { Cliente } from '@/lib/types';
+import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2, DollarSign, ShoppingBag, ArrowUpDown } from 'lucide-react';
+import { getClientes, addCliente, updateCliente, deleteCliente, getVendas } from '@/lib/storage';
+import { Cliente, Venda } from '@/lib/types';
+
+type SortOrder = 'asc' | 'desc';
 
 export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [vendas, setVendas] = useState<Venda[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [novoCliente, setNovoCliente] = useState({
+  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [formData, setFormData] = useState({
     nome: '',
     email: '',
     telefone: '',
+    cpf_cnpj: '',
     endereco: '',
+    cidade: '',
+    estado: '',
+    status: 'ativo' as 'ativo' | 'inativo'
   });
 
   useEffect(() => {
-    carregarClientes();
+    carregarDados();
   }, []);
 
-  const carregarClientes = () => {
-    const clientesCarregados = getClientes();
-    setClientes(clientesCarregados);
+  const carregarDados = async () => {
+    try {
+      setLoading(true);
+      const [clientesCarregados, vendasCarregadas] = await Promise.all([
+        getClientes(),
+        getVendas()
+      ]);
+      setClientes(clientesCarregados);
+      setVendas(vendasCarregadas);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAddCliente = () => {
-    if (!novoCliente.nome || !novoCliente.email) {
-      alert('Nome e email são obrigatórios');
+  // Calcular total gasto por cliente
+  const calcularTotalGasto = (clienteId: string): number => {
+    const vendasDoCliente = vendas.filter(
+      venda => venda.cliente_id === clienteId && venda.status === 'concluida'
+    );
+    return vendasDoCliente.reduce((total, venda) => total + venda.total, 0);
+  };
+
+  // Calcular número de compras por cliente
+  const calcularNumeroCompras = (clienteId: string): number => {
+    return vendas.filter(
+      venda => venda.cliente_id === clienteId && venda.status === 'concluida'
+    ).length;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.nome || !formData.telefone) {
+      alert('Nome Completo e Telefone são obrigatórios');
       return;
     }
 
-    const cliente: Cliente = {
-      id: Date.now().toString(),
-      nome: novoCliente.nome,
-      email: novoCliente.email,
-      telefone: novoCliente.telefone,
-      endereco: novoCliente.endereco,
-      dataCadastro: new Date().toISOString(),
-    };
-
-    addCliente(cliente);
-    carregarClientes();
-    setShowModal(false);
-    setNovoCliente({ nome: '', email: '', telefone: '', endereco: '' });
-  };
-
-  const handleDeleteCliente = (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este cliente?')) {
-      deleteCliente(id);
-      carregarClientes();
+    try {
+      if (editingCliente) {
+        await updateCliente(editingCliente.id, formData);
+      } else {
+        await addCliente({
+          ...formData,
+          data_cadastro: new Date().toISOString()
+        });
+      }
+      
+      await carregarDados();
+      setShowModal(false);
+      setEditingCliente(null);
+      resetForm();
+    } catch (error) {
+      console.error('Erro ao salvar cliente:', error);
+      alert('Erro ao salvar cliente. Tente novamente.');
     }
   };
 
-  const clientesFiltrados = clientes.filter(cliente =>
-    cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleEdit = (cliente: Cliente) => {
+    setEditingCliente(cliente);
+    setFormData({
+      nome: cliente.nome,
+      email: cliente.email,
+      telefone: cliente.telefone || '',
+      cpf_cnpj: cliente.cpf_cnpj || '',
+      endereco: cliente.endereco || '',
+      cidade: cliente.cidade || '',
+      estado: cliente.estado || '',
+      status: cliente.status
+    });
+    setShowModal(true);
+  };
+
+  const handleDeleteCliente = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este cliente?')) {
+      try {
+        await deleteCliente(id);
+        await carregarDados();
+      } catch (error) {
+        console.error('Erro ao deletar cliente:', error);
+        alert('Erro ao deletar cliente. Tente novamente.');
+      }
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      nome: '',
+      email: '',
+      telefone: '',
+      cpf_cnpj: '',
+      endereco: '',
+      cidade: '',
+      estado: '',
+      status: 'ativo'
+    });
+  };
+
+  const toggleSortOrder = () => {
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  };
+
+  const clientesFiltrados = clientes
+    .filter(cliente =>
+      cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cliente.email.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (sortOrder === 'asc') {
+        return a.nome.localeCompare(b.nome, 'pt-BR');
+      } else {
+        return b.nome.localeCompare(a.nome, 'pt-BR');
+      }
+    });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#00E5FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400 font-inter">Carregando clientes...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] p-4 sm:p-6 lg:p-8">
@@ -67,11 +166,15 @@ export default function ClientesPage() {
             Clientes
           </h1>
           <p className="text-gray-400 font-inter">
-            Gerencie seus clientes cadastrados
+            Gerencie seus clientes e acompanhe o histórico de compras
           </p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setEditingCliente(null);
+            resetForm();
+            setShowModal(true);
+          }}
           className="flex items-center gap-2 bg-[#00E5FF] text-black px-6 py-3 rounded-lg font-inter font-semibold hover:bg-[#00E5FF]/90 transition-all"
         >
           <Plus className="w-5 h-5" />
@@ -80,15 +183,24 @@ export default function ClientesPage() {
       </div>
 
       {/* Search Bar */}
-      <div className="mb-6 relative">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-        <input
-          type="text"
-          placeholder="Buscar clientes por nome ou email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-[#1a1a1a] border border-[#00E5FF]/20 rounded-lg pl-12 pr-4 py-3 text-white font-inter focus:outline-none focus:border-[#00E5FF] transition-all"
-        />
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex-1 relative">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Buscar clientes por nome ou email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-[#1a1a1a] border border-[#00E5FF]/20 rounded-lg pl-12 pr-4 py-3 text-white font-inter focus:outline-none focus:border-[#00E5FF] transition-all"
+          />
+        </div>
+        <button
+          onClick={toggleSortOrder}
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-[#1A1A1A] border border-[#00E5FF]/20 text-white rounded-lg font-medium hover:bg-[#00E5FF]/10 transition-all"
+        >
+          <ArrowUpDown className="w-5 h-5" />
+          <span>A-Z {sortOrder === 'asc' ? '↓' : '↑'}</span>
+        </button>
       </div>
 
       {/* Clientes Grid */}
@@ -102,7 +214,11 @@ export default function ClientesPage() {
             Comece adicionando seu primeiro cliente
           </p>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setEditingCliente(null);
+              resetForm();
+              setShowModal(true);
+            }}
             className="flex items-center gap-2 bg-[#00E5FF] text-black px-6 py-3 rounded-lg font-inter font-semibold hover:bg-[#00E5FF]/90 transition-all"
           >
             <Plus className="w-5 h-5" />
@@ -111,123 +227,214 @@ export default function ClientesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {clientesFiltrados.map((cliente) => (
-            <div
-              key={cliente.id}
-              className="bg-[#0D0D0D] border border-[#00E5FF]/10 rounded-xl p-6 hover:border-[#00E5FF]/30 transition-all"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
-                    <Users className="w-6 h-6 text-[#00E5FF]" />
+          {clientesFiltrados.map((cliente) => {
+            const totalGasto = calcularTotalGasto(cliente.id);
+            const numeroCompras = calcularNumeroCompras(cliente.id);
+
+            return (
+              <div
+                key={cliente.id}
+                className="bg-[#0D0D0D] border border-[#00E5FF]/10 rounded-xl p-6 hover:border-[#00E5FF]/30 transition-all"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
+                      <Users className="w-6 h-6 text-[#00E5FF]" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-inter font-bold text-white">{cliente.nome}</h3>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-inter font-bold text-white">{cliente.nome}</h3>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(cliente)}
+                      className="text-[#00E5FF] hover:text-[#00E5FF]/80 transition-colors"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCliente(cliente.id)}
+                      className="text-red-500 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDeleteCliente(cliente.id)}
-                  className="text-red-500 hover:text-red-400 transition-colors"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-gray-400">
-                  <Mail className="w-4 h-4" />
-                  <span className="text-sm font-inter">{cliente.email}</span>
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <Mail className="w-4 h-4" />
+                    <span className="text-sm font-inter">{cliente.email}</span>
+                  </div>
+                  {cliente.telefone && (
+                    <div className="flex items-center gap-2 text-gray-400">
+                      <Phone className="w-4 h-4" />
+                      <span className="text-sm font-inter">{cliente.telefone}</span>
+                    </div>
+                  )}
+                  {cliente.endereco && (
+                    <div className="flex items-center gap-2 text-gray-400">
+                      <MapPin className="w-4 h-4" />
+                      <span className="text-sm font-inter">{cliente.endereco}</span>
+                    </div>
+                  )}
                 </div>
-                {cliente.telefone && (
-                  <div className="flex items-center gap-2 text-gray-400">
-                    <Phone className="w-4 h-4" />
-                    <span className="text-sm font-inter">{cliente.telefone}</span>
-                  </div>
-                )}
-                {cliente.endereco && (
-                  <div className="flex items-center gap-2 text-gray-400">
-                    <MapPin className="w-4 h-4" />
-                    <span className="text-sm font-inter">{cliente.endereco}</span>
-                  </div>
-                )}
-              </div>
 
-              <div className="mt-4 pt-4 border-t border-[#00E5FF]/10">
-                <p className="text-xs text-gray-500 font-inter">
-                  Cadastrado em {new Date(cliente.dataCadastro).toLocaleDateString('pt-BR')}
-                </p>
+                {/* Seção de Gastos */}
+                <div className="mt-4 pt-4 border-t border-[#00E5FF]/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-[#00E5FF]" />
+                      <span className="text-sm font-inter text-gray-400">Total Gasto:</span>
+                    </div>
+                    <span className="text-lg font-inter font-bold text-[#00E5FF]">
+                      R$ {totalGasto.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ShoppingBag className="w-4 h-4 text-[#00E5FF]" />
+                      <span className="text-sm font-inter text-gray-400">Compras:</span>
+                    </div>
+                    <span className="text-sm font-inter font-semibold text-white">
+                      {numeroCompras} {numeroCompras === 1 ? 'compra' : 'compras'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-[#00E5FF]/10">
+                  <p className="text-xs text-gray-500 font-inter">
+                    Cadastrado em {new Date(cliente.data_cadastro).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* Modal Novo Cliente */}
+      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#1a1a1a] border border-[#00E5FF]/20 rounded-xl p-6 w-full max-w-md">
-            <h2 className="text-2xl font-inter font-bold text-white mb-6">Novo Cliente</h2>
+          <div className="bg-[#1a1a1a] border border-[#00E5FF]/20 rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-inter font-bold text-white mb-6">
+              {editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
+            </h2>
             
-            <div className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-inter text-gray-400 mb-2">Nome *</label>
+                <label className="block text-sm font-inter text-gray-400 mb-2">Nome Completo *</label>
                 <input
                   type="text"
-                  value={novoCliente.nome}
-                  onChange={(e) => setNovoCliente({ ...novoCliente, nome: e.target.value })}
+                  required
+                  value={formData.nome}
+                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                   className="w-full bg-[#0D0D0D] border border-[#00E5FF]/20 rounded-lg px-4 py-3 text-white font-inter focus:outline-none focus:border-[#00E5FF] transition-all"
-                  placeholder="Digite o nome"
+                  placeholder="Digite o nome completo do cliente"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-inter text-gray-400 mb-2">Email *</label>
-                <input
-                  type="email"
-                  value={novoCliente.email}
-                  onChange={(e) => setNovoCliente({ ...novoCliente, email: e.target.value })}
-                  className="w-full bg-[#0D0D0D] border border-[#00E5FF]/20 rounded-lg px-4 py-3 text-white font-inter focus:outline-none focus:border-[#00E5FF] transition-all"
-                  placeholder="Digite o email"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-inter text-gray-400 mb-2">Telefone</label>
+                <label className="block text-sm font-inter text-gray-400 mb-2">Telefone *</label>
                 <input
                   type="tel"
-                  value={novoCliente.telefone}
-                  onChange={(e) => setNovoCliente({ ...novoCliente, telefone: e.target.value })}
+                  required
+                  value={formData.telefone}
+                  onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
                   className="w-full bg-[#0D0D0D] border border-[#00E5FF]/20 rounded-lg px-4 py-3 text-white font-inter focus:outline-none focus:border-[#00E5FF] transition-all"
-                  placeholder="Digite o telefone"
+                  placeholder="(00) 00000-0000"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-inter text-gray-400 mb-2">Endereço</label>
+                <label className="block text-sm font-inter text-gray-400 mb-2">Email</label>
                 <input
-                  type="text"
-                  value={novoCliente.endereco}
-                  onChange={(e) => setNovoCliente({ ...novoCliente, endereco: e.target.value })}
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full bg-[#0D0D0D] border border-[#00E5FF]/20 rounded-lg px-4 py-3 text-white font-inter focus:outline-none focus:border-[#00E5FF] transition-all"
-                  placeholder="Digite o endereço"
+                  placeholder="Digite o email do cliente"
                 />
               </div>
-            </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 bg-gray-700 text-white px-4 py-3 rounded-lg font-inter font-semibold hover:bg-gray-600 transition-all"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleAddCliente}
-                className="flex-1 bg-[#00E5FF] text-black px-4 py-3 rounded-lg font-inter font-semibold hover:bg-[#00E5FF]/90 transition-all"
-              >
-                Adicionar
-              </button>
-            </div>
+              <div>
+                <label className="block text-sm font-inter text-gray-400 mb-2">CPF/CNPJ</label>
+                <input
+                  type="text"
+                  value={formData.cpf_cnpj}
+                  onChange={(e) => setFormData({ ...formData, cpf_cnpj: e.target.value })}
+                  className="w-full bg-[#0D0D0D] border border-[#00E5FF]/20 rounded-lg px-4 py-3 text-white font-inter focus:outline-none focus:border-[#00E5FF] transition-all"
+                  placeholder="Digite o CPF ou CNPJ"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-inter text-gray-400 mb-2">Endereço Completo</label>
+                <input
+                  type="text"
+                  value={formData.endereco}
+                  onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
+                  className="w-full bg-[#0D0D0D] border border-[#00E5FF]/20 rounded-lg px-4 py-3 text-white font-inter focus:outline-none focus:border-[#00E5FF] transition-all"
+                  placeholder="Rua, número, complemento, bairro"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-inter text-gray-400 mb-2">Cidade</label>
+                  <input
+                    type="text"
+                    value={formData.cidade}
+                    onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
+                    className="w-full bg-[#0D0D0D] border border-[#00E5FF]/20 rounded-lg px-4 py-3 text-white font-inter focus:outline-none focus:border-[#00E5FF] transition-all"
+                    placeholder="Cidade"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-inter text-gray-400 mb-2">Estado</label>
+                  <input
+                    type="text"
+                    maxLength={2}
+                    value={formData.estado}
+                    onChange={(e) => setFormData({ ...formData, estado: e.target.value.toUpperCase() })}
+                    className="w-full bg-[#0D0D0D] border border-[#00E5FF]/20 rounded-lg px-4 py-3 text-white font-inter focus:outline-none focus:border-[#00E5FF] transition-all"
+                    placeholder="UF"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-inter text-gray-400 mb-2">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'ativo' | 'inativo' })}
+                  className="w-full bg-[#0D0D0D] border border-[#00E5FF]/20 rounded-lg px-4 py-3 text-white font-inter focus:outline-none focus:border-[#00E5FF] transition-all"
+                >
+                  <option value="ativo">Ativo</option>
+                  <option value="inativo">Inativo</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingCliente(null);
+                    resetForm();
+                  }}
+                  className="flex-1 bg-gray-700 text-white px-4 py-3 rounded-lg font-inter font-semibold hover:bg-gray-600 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-[#00E5FF] text-black px-4 py-3 rounded-lg font-inter font-semibold hover:bg-[#00E5FF]/90 transition-all"
+                >
+                  {editingCliente ? 'Salvar' : 'Adicionar'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

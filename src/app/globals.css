@@ -128,3 +128,50 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Modo Compacto */
+.compact-mode {
+  --spacing-multiplier: 0.75;
+}
+
+.compact-mode * {
+  padding-top: calc(var(--spacing-multiplier, 1) * 1rem);
+  padding-bottom: calc(var(--spacing-multiplier, 1) * 1rem);
+}
+
+.compact-mode .p-4 {
+  padding: calc(0.75 * 1rem) !important;
+}
+
+.compact-mode .p-6 {
+  padding: calc(0.75 * 1.5rem) !important;
+}
+
+.compact-mode .p-8 {
+  padding: calc(0.75 * 2rem) !important;
+}
+
+.compact-mode .py-3 {
+  padding-top: calc(0.75 * 0.75rem) !important;
+  padding-bottom: calc(0.75 * 0.75rem) !important;
+}
+
+.compact-mode .gap-4 {
+  gap: calc(0.75 * 1rem) !important;
+}
+
+.compact-mode .gap-6 {
+  gap: calc(0.75 * 1.5rem) !important;
+}
+
+.compact-mode .space-y-3 > * + * {
+  margin-top: calc(0.75 * 0.75rem) !important;
+}
+
+.compact-mode .space-y-4 > * + * {
+  margin-top: calc(0.75 * 1rem) !important;
+}
+
+.compact-mode .space-y-6 > * + * {
+  margin-top: calc(0.75 * 1.5rem) !important;
+}
