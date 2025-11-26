@@ -25,7 +25,7 @@ export default function AuthPage() {
     if (!isLogin && email && email.includes('@')) {
       const timeoutId = setTimeout(async () => {
         await checkEmailExists(email);
-      }, 800); // Aguarda 800ms após o usuário parar de digitar
+      }, 800);
 
       return () => clearTimeout(timeoutId);
     } else {
@@ -37,29 +37,21 @@ export default function AuthPage() {
     try {
       setCheckingEmail(true);
       
-      // Tentar fazer login com uma senha aleatória para verificar se o e-mail existe
       const { data, error } = await supabase.auth.signInWithPassword({
         email: emailToCheck,
-        password: 'random-password-check-12345', // Senha aleatória apenas para verificar
+        password: 'random-password-check-12345',
       });
 
-      // Se o erro for "Invalid login credentials", significa que o e-mail existe mas a senha está errada
-      // Se o erro for diferente ou não houver erro, o e-mail pode existir
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
-          // E-mail existe (senha incorreta)
           setEmailExists(true);
         } else if (error.message.includes('Email not confirmed')) {
-          // E-mail existe mas não foi confirmado
           setEmailExists(true);
         } else {
-          // E-mail não existe
           setEmailExists(false);
         }
       } else {
-        // Login bem-sucedido (improvável com senha aleatória, mas e-mail existe)
         setEmailExists(true);
-        // Fazer logout imediatamente
         await supabase.auth.signOut();
       }
     } catch (error) {
@@ -83,7 +75,16 @@ export default function AuthPage() {
           password,
         });
 
-        if (error) throw error;
+        if (error) {
+          // Mensagens de erro mais claras
+          if (error.message.includes('Invalid login credentials')) {
+            throw new Error('E-mail ou senha incorretos. Verifique suas credenciais.');
+          } else if (error.message.includes('Email not confirmed')) {
+            throw new Error('E-mail não confirmado. Verifique sua caixa de entrada.');
+          } else {
+            throw error;
+          }
+        }
 
         setMessage({ type: 'success', text: 'Login realizado com sucesso!' });
         setTimeout(() => router.push('/'), 1500);
@@ -119,7 +120,6 @@ export default function AuthPage() {
         });
 
         if (error) {
-          // Verificar se o erro é de e-mail já cadastrado
           if (error.message.includes('already registered') || error.message.includes('User already registered')) {
             setMessage({ 
               type: 'error', 
@@ -137,7 +137,6 @@ export default function AuthPage() {
           text: 'Cadastro realizado! Verifique seu e-mail para confirmar sua conta.' 
         });
         
-        // Limpar formulário
         setEmail('');
         setPassword('');
         setConfirmPassword('');
@@ -145,6 +144,7 @@ export default function AuthPage() {
         setEmailExists(false);
       }
     } catch (error: any) {
+      console.error('Erro de autenticação:', error);
       setMessage({ 
         type: 'error', 
         text: error.message || 'Ocorreu um erro. Tente novamente.' 
@@ -157,18 +157,46 @@ export default function AuthPage() {
   const handleSocialLogin = async (provider: 'google' | 'github') => {
     try {
       setLoading(true);
+      setMessage(null);
+
+      // Verificar se o Supabase está configurado
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Configuração do Supabase não encontrada. Verifique as variáveis de ambiente.');
+      }
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: provider,
         options: {
           redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`Erro ao conectar com ${provider}:`, error);
+        
+        // Mensagens de erro específicas
+        if (error.message.includes('OAuth')) {
+          throw new Error(`Erro ao conectar com ${provider}. Verifique se o OAuth está configurado corretamente no Supabase.`);
+        } else if (error.message.includes('redirect')) {
+          throw new Error('Erro de redirecionamento. Verifique as URLs autorizadas no Supabase.');
+        } else {
+          throw error;
+        }
+      }
+
+      // OAuth redireciona automaticamente, então não precisamos fazer nada aqui
     } catch (error: any) {
+      console.error('Erro no login social:', error);
       setMessage({ 
         type: 'error', 
-        text: error.message || 'Erro ao conectar com rede social.' 
+        text: error.message || `Erro ao conectar com ${provider}. Tente novamente.` 
       });
       setLoading(false);
     }
@@ -182,20 +210,31 @@ export default function AuthPage() {
 
     try {
       setLoading(true);
+      setMessage(null);
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao enviar e-mail de recuperação:', error);
+        
+        if (error.message.includes('not found')) {
+          throw new Error('E-mail não encontrado. Verifique se está correto.');
+        } else {
+          throw error;
+        }
+      }
 
       setMessage({ 
         type: 'success', 
-        text: 'E-mail de recuperação enviado! Verifique sua caixa de entrada.' 
+        text: 'E-mail de recuperação enviado! Verifique sua caixa de entrada e spam.' 
       });
     } catch (error: any) {
+      console.error('Erro ao recuperar senha:', error);
       setMessage({ 
         type: 'error', 
-        text: error.message || 'Erro ao enviar e-mail de recuperação.' 
+        text: error.message || 'Erro ao enviar e-mail de recuperação. Tente novamente.' 
       });
     } finally {
       setLoading(false);
@@ -208,7 +247,6 @@ export default function AuthPage() {
         {/* Logo */}
         <div className="text-center mb-8 animate-fade-in">
           <div className="inline-flex items-center justify-center mb-4">
-            {/* Logo Original com Gráficos de Barras */}
             <svg width="120" height="120" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id="barGradientAuth" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -217,10 +255,8 @@ export default function AuthPage() {
                 </linearGradient>
               </defs>
               
-              {/* Background Circle */}
               <circle cx="100" cy="100" r="90" fill="#0D0D0D" stroke="#00E5FF" strokeWidth="2" opacity="0.3"/>
               
-              {/* Bar Chart Representation */}
               <rect x="50" y="110" width="20" height="40" rx="4" fill="url(#barGradientAuth)" opacity="0.7">
                 <animate attributeName="height" values="40;50;40" dur="2s" repeatCount="indefinite"/>
                 <animate attributeName="y" values="110;100;110" dur="2s" repeatCount="indefinite"/>
@@ -241,10 +277,8 @@ export default function AuthPage() {
                 <animate attributeName="y" values="80;70;80" dur="2s" begin="0.9s" repeatCount="indefinite"/>
               </rect>
               
-              {/* Base Line */}
               <line x1="40" y1="150" x2="170" y2="150" stroke="#00E5FF" strokeWidth="3" strokeLinecap="round"/>
               
-              {/* Accent Dots */}
               <circle cx="100" cy="40" r="4" fill="#00E5FF">
                 <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
               </circle>
@@ -340,7 +374,6 @@ export default function AuthPage() {
               )}
             </div>
             
-            {/* Mensagem de e-mail já cadastrado */}
             {!isLogin && emailExists && !checkingEmail && (
               <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg animate-slide-in">
                 <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />

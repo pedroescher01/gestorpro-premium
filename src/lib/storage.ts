@@ -330,7 +330,11 @@ export const addInsumo = async (insumo: Omit<Insumo, 'id'>) => {
   const userId = await getUserId();
   const { data, error } = await supabase
     .from('insumos')
-    .insert([{ ...insumo, user_id: userId }])
+    .insert([{ 
+      ...insumo, 
+      user_id: userId,
+      data_validade: insumo.data_validade || null // Enviar null se vazio
+    }])
     .select()
     .single();
   
@@ -344,9 +348,16 @@ export const addInsumo = async (insumo: Omit<Insumo, 'id'>) => {
 
 export const updateInsumo = async (id: string, insumoAtualizado: Partial<Insumo>) => {
   const userId = await getUserId();
+  
+  // Tratar data_validade vazia como null
+  const dadosAtualizados = {
+    ...insumoAtualizado,
+    data_validade: insumoAtualizado.data_validade || null
+  };
+  
   const { error } = await supabase
     .from('insumos')
-    .update(insumoAtualizado)
+    .update(dadosAtualizados)
     .eq('id', id)
     .eq('user_id', userId);
   

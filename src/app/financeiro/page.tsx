@@ -1,6 +1,6 @@
 'use client';
 
-import { DollarSign, Plus, Search, Edit, Trash2, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
+import { DollarSign, Plus, Search, Edit, Trash2, TrendingUp, TrendingDown, Calendar, FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getFinanceiro, addFinanceiro, updateFinanceiro, deleteFinanceiro } from '@/lib/storage';
 import { Financeiro } from '@/lib/types';
@@ -129,7 +129,7 @@ export default function FinanceiroPage() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 rounded-lg bg-[#00E5FF]/10 border border-[#00E5FF]/20">
+          <div className="p-2 rounded-lg bg-gradient-to-br from-[#00E5FF]/20 to-blue-600/20 border border-[#00E5FF]/30">
             <DollarSign className="w-6 h-6 text-[#00E5FF]" />
           </div>
           <h1 className="text-3xl font-bold text-white font-inter">Financeiro</h1>
@@ -139,24 +139,30 @@ export default function FinanceiroPage() {
 
       {/* Cards de Resumo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-[#1A1A1A] border border-green-500/20 rounded-lg p-6">
+        <div className="bg-[#0D0D0D] border border-green-500/20 rounded-xl p-6 hover:border-green-500/40 hover:shadow-lg hover:shadow-green-500/10 transition-all">
           <div className="flex items-center gap-3 mb-2">
-            <TrendingUp className="w-5 h-5 text-green-500" />
-            <span className="text-gray-400 text-sm">Receitas</span>
+            <div className="w-10 h-10 bg-gradient-to-br from-green-500/20 to-emerald-600/20 rounded-lg flex items-center justify-center border border-green-500/30">
+              <TrendingUp className="w-5 h-5 text-green-500" />
+            </div>
+            <span className="text-gray-400 text-sm font-medium">Receitas</span>
           </div>
           <p className="text-2xl font-bold text-green-500">R$ {totalReceitas.toFixed(2)}</p>
         </div>
-        <div className="bg-[#1A1A1A] border border-red-500/20 rounded-lg p-6">
+        <div className="bg-[#0D0D0D] border border-red-500/20 rounded-xl p-6 hover:border-red-500/40 hover:shadow-lg hover:shadow-red-500/10 transition-all">
           <div className="flex items-center gap-3 mb-2">
-            <TrendingDown className="w-5 h-5 text-red-500" />
-            <span className="text-gray-400 text-sm">Despesas</span>
+            <div className="w-10 h-10 bg-gradient-to-br from-red-500/20 to-orange-600/20 rounded-lg flex items-center justify-center border border-red-500/30">
+              <TrendingDown className="w-5 h-5 text-red-500" />
+            </div>
+            <span className="text-gray-400 text-sm font-medium">Despesas</span>
           </div>
           <p className="text-2xl font-bold text-red-500">R$ {totalDespesas.toFixed(2)}</p>
         </div>
-        <div className="bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg p-6">
+        <div className="bg-[#0D0D0D] border border-[#00E5FF]/20 rounded-xl p-6 hover:border-[#00E5FF]/40 hover:shadow-lg hover:shadow-[#00E5FF]/10 transition-all">
           <div className="flex items-center gap-3 mb-2">
-            <DollarSign className="w-5 h-5 text-[#00E5FF]" />
-            <span className="text-gray-400 text-sm">Saldo</span>
+            <div className="w-10 h-10 bg-gradient-to-br from-[#00E5FF]/20 to-blue-600/20 rounded-lg flex items-center justify-center border border-[#00E5FF]/30">
+              <DollarSign className="w-5 h-5 text-[#00E5FF]" />
+            </div>
+            <span className="text-gray-400 text-sm font-medium">Saldo</span>
           </div>
           <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-[#00E5FF]' : 'text-red-500'}`}>
             R$ {saldo.toFixed(2)}
@@ -214,18 +220,25 @@ export default function FinanceiroPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredFinanceiro.map((item) => (
-            <div key={item.id} className="bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg p-6 hover:border-[#00E5FF]/40 transition-all">
+            <div key={item.id} className="bg-[#0D0D0D] border border-[#00E5FF]/10 rounded-xl p-6 hover:border-[#00E5FF]/30 hover:shadow-lg hover:shadow-[#00E5FF]/10 transition-all">
+              {/* Header com tipo e ações */}
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    {item.tipo === 'receita' ? (
-                      <TrendingUp className="w-4 h-4 text-green-500" />
-                    ) : (
-                      <TrendingDown className="w-4 h-4 text-red-500" />
-                    )}
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${
+                      item.tipo === 'receita' 
+                        ? 'bg-gradient-to-br from-green-500/20 to-emerald-600/20 border-green-500/30' 
+                        : 'bg-gradient-to-br from-red-500/20 to-orange-600/20 border-red-500/30'
+                    }`}>
+                      {item.tipo === 'receita' ? (
+                        <TrendingUp className="w-5 h-5 text-green-500" />
+                      ) : (
+                        <TrendingDown className="w-5 h-5 text-red-500" />
+                      )}
+                    </div>
                     <h3 className="text-lg font-bold text-white">{item.descricao}</h3>
                   </div>
-                  <span className="inline-block px-2 py-1 text-xs rounded-full bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/20">
+                  <span className="inline-block px-3 py-1 text-xs rounded-full bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/20 font-medium">
                     {item.categoria}
                   </span>
                 </div>
@@ -244,17 +257,34 @@ export default function FinanceiroPage() {
                   </button>
                 </div>
               </div>
-              <div className="space-y-2 pt-4 border-t border-gray-700">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-400">
-                    <Calendar className="w-4 h-4" />
-                    <span className="text-sm">{formatDateBR(item.data)}</span>
+
+              {/* Grid de informações */}
+              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-[#00E5FF]/10">
+                <div className={`rounded-lg p-3 border ${
+                  item.tipo === 'receita'
+                    ? 'bg-gradient-to-br from-green-500/5 to-emerald-600/5 border-green-500/20'
+                    : 'bg-gradient-to-br from-red-500/5 to-orange-600/5 border-red-500/20'
+                }`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className={`w-4 h-4 ${item.tipo === 'receita' ? 'text-green-500' : 'text-red-500'}`} />
+                    <span className="text-xs text-gray-400">Valor</span>
                   </div>
-                  <span className={`text-xl font-bold ${item.tipo === 'receita' ? 'text-green-500' : 'text-red-500'}`}>
+                  <span className={`text-lg font-bold ${item.tipo === 'receita' ? 'text-green-500' : 'text-red-500'}`}>
                     {item.tipo === 'receita' ? '+' : '-'} R$ {item.valor.toFixed(2)}
                   </span>
                 </div>
-                <span className={`inline-block px-2 py-1 text-xs rounded-full border ${getStatusColor(item.status)}`}>
+                <div className="bg-gradient-to-br from-[#00E5FF]/5 to-blue-600/5 border border-[#00E5FF]/20 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Calendar className="w-4 h-4 text-[#00E5FF]" />
+                    <span className="text-xs text-gray-400">Data</span>
+                  </div>
+                  <span className="text-sm font-bold text-white">{formatDateBR(item.data)}</span>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="mt-3 pt-3 border-t border-[#00E5FF]/10">
+                <span className={`inline-block px-3 py-1 text-xs rounded-full border font-medium ${getStatusColor(item.status)}`}>
                   {item.status}
                 </span>
               </div>

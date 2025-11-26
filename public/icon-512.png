@@ -1,32 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background com gradiente -->
+  <rect width="512" height="512" rx="96" fill="url(#gradient)"/>
+  
+  <!-- Definição do gradiente -->
   <defs>
-    <linearGradient id="barGradient512" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#00E5FF;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0099CC;stop-opacity:1" />
+    <linearGradient id="gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0D0D0D"/>
+      <stop offset="100%" stop-color="#1A1A1A"/>
     </linearGradient>
+    
+    <!-- Sombra para profundidade -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="4" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
   
-  <!-- Background -->
-  <rect width="512" height="512" fill="#0D0D0D" rx="100"/>
+  <!-- Ícone ERP - Gráfico de barras estilizado com mais detalhes -->
+  <g transform="translate(128, 128)" filter="url(#shadow)">
+    <!-- Barra 1 -->
+    <rect x="0" y="110" width="56" height="146" rx="12" fill="#00E5FF" opacity="0.8"/>
+    <rect x="4" y="114" width="48" height="8" rx="4" fill="#FFFFFF" opacity="0.2"/>
+    
+    <!-- Barra 2 -->
+    <rect x="76" y="50" width="56" height="206" rx="12" fill="#00E5FF"/>
+    <rect x="80" y="54" width="48" height="8" rx="4" fill="#FFFFFF" opacity="0.2"/>
+    
+    <!-- Barra 3 -->
+    <rect x="152" y="80" width="56" height="176" rx="12" fill="#00E5FF" opacity="0.9"/>
+    <rect x="156" y="84" width="48" height="8" rx="4" fill="#FFFFFF" opacity="0.2"/>
+    
+    <!-- Barra 4 -->
+    <rect x="228" y="20" width="56" height="236" rx="12" fill="#00E5FF" opacity="0.7"/>
+    <rect x="232" y="24" width="48" height="8" rx="4" fill="#FFFFFF" opacity="0.2"/>
+    
+    <!-- Linha de tendência com gradiente -->
+    <defs>
+      <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="#00E5FF" stop-opacity="0.8"/>
+      </linearGradient>
+    </defs>
+    <path d="M 28 130 L 104 70 L 180 95 L 256 35" stroke="url(#lineGradient)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    
+    <!-- Pontos na linha com brilho -->
+    <circle cx="28" cy="130" r="10" fill="#00E5FF"/>
+    <circle cx="28" cy="130" r="6" fill="#FFFFFF" opacity="0.5"/>
+    
+    <circle cx="104" cy="70" r="10" fill="#00E5FF"/>
+    <circle cx="104" cy="70" r="6" fill="#FFFFFF" opacity="0.5"/>
+    
+    <circle cx="180" cy="95" r="10" fill="#00E5FF"/>
+    <circle cx="180" cy="95" r="6" fill="#FFFFFF" opacity="0.5"/>
+    
+    <circle cx="256" cy="35" r="10" fill="#00E5FF"/>
+    <circle cx="256" cy="35" r="6" fill="#FFFFFF" opacity="0.5"/>
+  </g>
   
-  <!-- Bar Chart Representation -->
-  <!-- Bar 1 (shortest) -->
-  <rect x="128" y="282" width="51" height="102" rx="10" fill="url(#barGradient512)" opacity="0.7"/>
-  
-  <!-- Bar 2 (medium) -->
-  <rect x="205" y="230" width="51" height="154" rx="10" fill="url(#barGradient512)" opacity="0.85"/>
-  
-  <!-- Bar 3 (tallest) -->
-  <rect x="282" y="154" width="51" height="230" rx="10" fill="url(#barGradient512)"/>
-  
-  <!-- Bar 4 (medium-tall) -->
-  <rect x="359" y="205" width="51" height="179" rx="10" fill="url(#barGradient512)" opacity="0.8"/>
-  
-  <!-- Base Line -->
-  <line x1="102" y1="384" x2="435" y2="384" stroke="#00E5FF" stroke-width="8" stroke-linecap="round"/>
-  
-  <!-- Accent Dots -->
-  <circle cx="256" cy="102" r="10" fill="#00E5FF"/>
-  <circle cx="294" cy="90" r="8" fill="#00E5FF" opacity="0.7"/>
-  <circle cx="218" cy="90" r="8" fill="#00E5FF" opacity="0.7"/>
+  <!-- Texto GestorPro -->
+  <text x="256" y="420" font-family="Inter, sans-serif" font-size="48" font-weight="bold" fill="#00E5FF" text-anchor="middle">GestorPro</text>
+  <text x="256" y="460" font-family="Inter, sans-serif" font-size="24" font-weight="normal" fill="#00E5FF" text-anchor="middle" opacity="0.7">Sistema ERP</text>
 </svg>

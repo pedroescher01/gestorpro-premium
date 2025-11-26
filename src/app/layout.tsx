@@ -134,7 +134,11 @@ export default function RootLayout({
           <meta name="apple-mobile-web-app-capable" content="yes" />
           <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
           <meta name="apple-mobile-web-app-title" content="GestorPro" />
-          <link rel="apple-touch-icon" href="/icon-192.png" />
+          <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+          <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
+          <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
+          <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+          <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
         </head>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0D0D0D]`}>
           <div className="min-h-screen flex items-center justify-center">
@@ -159,7 +163,11 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="GestorPro" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
         <meta name="description" content="Sistema completo de gestão empresarial para pequenas e médias empresas" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
       </head>

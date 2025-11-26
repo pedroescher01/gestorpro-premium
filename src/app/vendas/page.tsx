@@ -1,6 +1,6 @@
 'use client';
 
-import { ShoppingCart, Plus, Search, Edit, Trash2, User, Calendar, Package, X, ArrowUpDown } from 'lucide-react';
+import { ShoppingCart, Plus, Search, Edit, Trash2, User, Calendar, Package, X, ArrowUpDown, DollarSign } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getVendas, addVenda, updateVenda, deleteVenda, getClientes, getProdutos, getVendaItens } from '@/lib/storage';
 import { Venda, Cliente, Produto } from '@/lib/types';
@@ -277,7 +277,7 @@ export default function VendasPage() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 rounded-lg bg-[#00E5FF]/10 border border-[#00E5FF]/20">
+          <div className="p-2 rounded-lg bg-gradient-to-br from-[#00E5FF]/20 to-blue-600/20 border border-[#00E5FF]/30">
             <ShoppingCart className="w-6 h-6 text-[#00E5FF]" />
           </div>
           <h1 className="text-3xl font-bold text-white font-inter">Vendas</h1>
@@ -342,14 +342,17 @@ export default function VendasPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredVendas.map((venda) => (
-            <div key={venda.id} className="bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg p-6 hover:border-[#00E5FF]/40 transition-all">
+            <div key={venda.id} className="bg-[#0D0D0D] border border-[#00E5FF]/10 rounded-xl p-6 hover:border-[#00E5FF]/30 hover:shadow-lg hover:shadow-[#00E5FF]/10 transition-all">
+              {/* Header com cliente e status */}
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <User className="w-4 h-4 text-gray-400" />
+                    <div className="w-10 h-10 bg-gradient-to-br from-[#00E5FF]/20 to-blue-600/20 rounded-lg flex items-center justify-center border border-[#00E5FF]/30">
+                      <User className="w-5 h-5 text-[#00E5FF]" />
+                    </div>
                     <h3 className="text-lg font-bold text-white">{getClienteNome(venda.cliente_id)}</h3>
                   </div>
-                  <span className={`inline-block px-2 py-1 text-xs rounded-full border ${getStatusColor(venda.status)}`}>
+                  <span className={`inline-block px-3 py-1 text-xs rounded-full border font-medium ${getStatusColor(venda.status)}`}>
                     {venda.status}
                   </span>
                 </div>
@@ -369,12 +372,14 @@ export default function VendasPage() {
                 </div>
               </div>
               
-              {/* Descrição dos Produtos */}
-              <div className="mb-4 p-3 bg-[#0D0D0D] rounded-lg border border-[#00E5FF]/10">
+              {/* Box de descrição dos produtos */}
+              <div className="mb-4 p-4 bg-gradient-to-br from-[#00E5FF]/5 to-blue-600/5 rounded-lg border border-[#00E5FF]/20">
                 <div className="flex items-start gap-2 mb-2">
-                  <Package className="w-4 h-4 text-[#00E5FF] mt-0.5 flex-shrink-0" />
+                  <div className="w-8 h-8 bg-[#00E5FF]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Package className="w-4 h-4 text-[#00E5FF]" />
+                  </div>
                   <div className="flex-1">
-                    <p className="text-xs text-gray-400 mb-1">Produtos vendidos:</p>
+                    <p className="text-xs text-gray-400 mb-1 font-medium">Produtos vendidos:</p>
                     <p className="text-sm text-white leading-relaxed">
                       {getDescricaoVenda(venda)}
                     </p>
@@ -382,19 +387,31 @@ export default function VendasPage() {
                 </div>
               </div>
 
-              <div className="space-y-2 pt-4 border-t border-gray-700">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-400">
-                    <Calendar className="w-4 h-4" />
-                    <span className="text-sm">{formatDateBR(venda.data)}</span>
+              {/* Grid de informações */}
+              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-[#00E5FF]/10">
+                <div className="bg-gradient-to-br from-[#00E5FF]/5 to-blue-600/5 border border-[#00E5FF]/20 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Calendar className="w-4 h-4 text-[#00E5FF]" />
+                    <span className="text-xs text-gray-400">Data</span>
                   </div>
-                  <span className="text-xl font-bold text-[#00E5FF]">
+                  <span className="text-sm font-bold text-white">{formatDateBR(venda.data)}</span>
+                </div>
+                <div className="bg-gradient-to-br from-green-500/5 to-emerald-600/5 border border-green-500/20 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className="w-4 h-4 text-green-500" />
+                    <span className="text-xs text-gray-400">Total</span>
+                  </div>
+                  <span className="text-lg font-bold text-green-500">
                     R$ {venda.total.toFixed(2)}
                   </span>
                 </div>
-                <div className="text-xs text-gray-500">
-                  Pagamento: {venda.forma_pagamento}
-                </div>
+              </div>
+
+              {/* Forma de pagamento */}
+              <div className="mt-3 pt-3 border-t border-[#00E5FF]/10">
+                <p className="text-xs text-gray-500">
+                  Pagamento: <span className="text-[#00E5FF] font-medium">{venda.forma_pagamento}</span>
+                </p>
               </div>
             </div>
           ))}

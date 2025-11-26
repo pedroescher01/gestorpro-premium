@@ -1,78 +1,107 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Package, 
-  Briefcase, 
-  Layers,
+import {
+  LayoutDashboard,
+  Users,
+  Package,
   ShoppingCart,
-  Warehouse,
   DollarSign,
-  Truck,
-  BarChart3,
+  FileText,
   Settings,
   Menu,
   X,
   LogOut,
-  HelpCircle,
-  ChefHat,
+  ChevronDown,
+  ChevronRight,
+  Briefcase,
   Factory,
-  FileText
+  Calculator,
+  FileCheck,
+  PackageCheck
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
-const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
-  { icon: Users, label: 'Clientes', href: '/clientes' },
-  { icon: Package, label: 'Produtos', href: '/produtos' },
-  { icon: Briefcase, label: 'Serviços', href: '/servicos' },
-  { icon: Layers, label: 'Insumos', href: '/insumos' },
-  { icon: ChefHat, label: 'Receitas', href: '/receitas' },
-  { icon: FileText, label: 'Orçamentos', href: '/orcamentos' },
-  { icon: Factory, label: 'Produção', href: '/producao' },
-  { icon: ShoppingCart, label: 'Vendas', href: '/vendas' },
-  { icon: Warehouse, label: 'Estoque', href: '/estoque' },
-  { icon: DollarSign, label: 'Financeiro', href: '/financeiro' },
-  { icon: Truck, label: 'Fornecedores', href: '/fornecedores' },
-  { icon: BarChart3, label: 'Relatórios', href: '/relatorios' },
-  { icon: Settings, label: 'Configurações', href: '/configuracoes' },
-  { icon: HelpCircle, label: 'Suporte', href: '/suporte' },
-];
+interface MenuItem {
+  name: string;
+  icon: any;
+  path: string;
+  submenu?: { name: string; path: string }[];
+}
 
 export default function Sidebar() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const pathname = usePathname();
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
-  const [userName, setUserName] = useState('');
 
-  useEffect(() => {
-    const getUserData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserEmail(user.email || '');
-        setUserName(user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário');
-      }
-    };
+  const menuItems: MenuItem[] = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
+    { name: 'Clientes', icon: Users, path: '/clientes' },
+    { 
+      name: 'Produtos', 
+      icon: Package, 
+      path: '/produtos',
+      submenu: [
+        { name: 'Lista de Produtos', path: '/produtos' },
+        { name: 'Insumos', path: '/insumos' },
+        { name: 'Fornecedores', path: '/fornecedores' }
+      ]
+    },
+    { name: 'Serviços', icon: Briefcase, path: '/servicos' },
+    { name: 'Vendas', icon: ShoppingCart, path: '/vendas' },
+    { name: 'Orçamentos', icon: FileText, path: '/orcamentos' },
+    { name: 'NFE', icon: FileCheck, path: '/nfe' },
+    { name: 'Produção', icon: Factory, path: '/producao' },
+    { name: 'Recebimentos', icon: PackageCheck, path: '/recebimentos' },
+    { name: 'Financeiro', icon: DollarSign, path: '/financeiro' },
+    { name: 'Calculadora', icon: Calculator, path: '/calculadora-bobina' },
+    { name: 'Configurações', icon: Settings, path: '/configuracoes' },
+  ];
 
-    getUserData();
-  }, []);
+  const toggleMenu = (menuName: string) => {
+    setExpandedMenus(prev =>
+      prev.includes(menuName)
+        ? prev.filter(name => name !== menuName)
+        : [...prev, menuName]
+    );
+  };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/auth');
+    try {
+      await supabase.auth.signOut();
+      router.push('/auth');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
   };
+
+  const isActive = (path: string) => {
+    if (path === '/') {
+      return pathname === '/';
+    }
+    return pathname.startsWith(path);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   return (
     <>
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-[#0D0D0D] border border-[#00E5FF]/20 text-[#00E5FF] hover:bg-[#00E5FF]/10 transition-all"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg text-white hover:bg-[#00E5FF]/10 transition-all"
       >
         {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
       </button>
@@ -80,105 +109,111 @@ export default function Sidebar() {
       {/* Overlay */}
       {isOpen && (
         <div
+          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
           onClick={() => setIsOpen(false)}
-          className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
         />
       )}
 
       {/* Sidebar */}
       <aside
         className={`
-          fixed lg:sticky top-0 left-0 h-screen bg-[#0D0D0D] border-r border-[#00E5FF]/10
-          w-64 z-40 transition-transform duration-300 ease-in-out
+          fixed lg:sticky top-0 left-0 h-screen
+          w-64 bg-[#0D0D0D] border-r border-[#00E5FF]/10
+          transform transition-transform duration-300 ease-in-out z-40
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          flex flex-col
         `}
       >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="p-6 border-b border-[#00E5FF]/10">
-            <div className="flex items-center gap-3">
-              {/* Logo Original com Gráficos de Barras */}
-              <div className="relative w-12 h-12 flex-shrink-0">
-                <svg width="48" height="48" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="barGradientSidebar" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" style={{stopColor:'#00E5FF', stopOpacity:1}} />
-                      <stop offset="100%" style={{stopColor:'#0099CC', stopOpacity:1}} />
-                    </linearGradient>
-                  </defs>
-                  
-                  {/* Bar Chart Representation */}
-                  <rect x="50" y="110" width="20" height="40" rx="4" fill="url(#barGradientSidebar)" opacity="0.7"/>
-                  <rect x="80" y="90" width="20" height="60" rx="4" fill="url(#barGradientSidebar)" opacity="0.85"/>
-                  <rect x="110" y="60" width="20" height="90" rx="4" fill="url(#barGradientSidebar)"/>
-                  <rect x="140" y="80" width="20" height="70" rx="4" fill="url(#barGradientSidebar)" opacity="0.8"/>
-                  
-                  {/* Base Line */}
-                  <line x1="40" y1="150" x2="170" y2="150" stroke="#00E5FF" strokeWidth="3" strokeLinecap="round"/>
-                  
-                  {/* Accent Dots */}
-                  <circle cx="100" cy="40" r="4" fill="#00E5FF"/>
-                  <circle cx="115" cy="35" r="3" fill="#00E5FF" opacity="0.7"/>
-                  <circle cx="85" cy="35" r="3" fill="#00E5FF" opacity="0.7"/>
-                </svg>
-              </div>
-              
-              {/* Texto */}
-              <div>
-                <h1 className="text-xl font-inter font-bold text-white">
-                  Gestor<span className="text-[#00E5FF]">Pro</span>
-                </h1>
-                <p className="text-xs text-gray-400 tracking-wider">SISTEMA DE GESTÃO</p>
-              </div>
+        {/* Logo */}
+        <div className="p-6 border-b border-[#00E5FF]/10">
+          <h1 className="text-2xl font-inter font-bold text-white flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-[#00E5FF] to-blue-600 rounded-lg flex items-center justify-center">
+              <LayoutDashboard className="w-5 h-5 text-white" />
             </div>
-          </div>
+            GestorPro
+          </h1>
+          <p className="text-xs text-gray-400 mt-1 font-inter">Sistema de Gestão</p>
+        </div>
 
-          {/* Menu Items */}
-          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              
-              return (
+        {/* Menu Items */}
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+          {menuItems.map((item) => (
+            <div key={item.name}>
+              {item.submenu ? (
+                <>
+                  <button
+                    onClick={() => toggleMenu(item.name)}
+                    className={`
+                      w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg
+                      transition-all duration-200 font-inter
+                      ${isActive(item.path)
+                        ? 'bg-gradient-to-r from-[#00E5FF]/20 to-blue-600/20 text-[#00E5FF] border border-[#00E5FF]/30'
+                        : 'text-gray-400 hover:bg-[#1A1A1A] hover:text-white'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className="w-5 h-5" />
+                      <span className="font-medium">{item.name}</span>
+                    </div>
+                    {expandedMenus.includes(item.name) ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </button>
+                  {expandedMenus.includes(item.name) && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      {item.submenu.map((subItem) => (
+                        <Link
+                          key={subItem.path}
+                          href={subItem.path}
+                          onClick={() => setIsOpen(false)}
+                          className={`
+                            flex items-center gap-3 px-4 py-2 rounded-lg
+                            transition-all duration-200 font-inter text-sm
+                            ${isActive(subItem.path)
+                              ? 'bg-gradient-to-r from-[#00E5FF]/20 to-blue-600/20 text-[#00E5FF] border border-[#00E5FF]/30'
+                              : 'text-gray-400 hover:bg-[#1A1A1A] hover:text-white'
+                            }
+                          `}
+                        >
+                          <span>{subItem.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
                 <Link
-                  key={item.href}
-                  href={item.href}
+                  href={item.path}
                   onClick={() => setIsOpen(false)}
                   className={`
                     flex items-center gap-3 px-4 py-3 rounded-lg
-                    transition-all duration-200 group
-                    ${isActive 
-                      ? 'bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/20' 
-                      : 'text-gray-400 hover:text-[#00E5FF] hover:bg-[#00E5FF]/5'
+                    transition-all duration-200 font-inter
+                    ${isActive(item.path)
+                      ? 'bg-gradient-to-r from-[#00E5FF]/20 to-blue-600/20 text-[#00E5FF] border border-[#00E5FF]/30'
+                      : 'text-gray-400 hover:bg-[#1A1A1A] hover:text-white'
                     }
                   `}
                 >
-                  <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? 'text-[#00E5FF]' : ''}`} />
-                  <span className="font-inter text-sm font-medium">{item.label}</span>
+                  <item.icon className="w-5 h-5" />
+                  <span className="font-medium">{item.name}</span>
                 </Link>
-              );
-            })}
-          </nav>
-
-          {/* Footer */}
-          <div className="p-4 border-t border-[#00E5FF]/10 space-y-2">
-            <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[#00E5FF]/5">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00E5FF] to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                {userName.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-inter font-medium text-white truncate">{userName}</p>
-                <p className="text-xs text-gray-400 truncate">{userEmail}</p>
-              </div>
+              )}
             </div>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/5 transition-all duration-200 group"
-            >
-              <LogOut className="w-5 h-5 transition-transform group-hover:scale-110" />
-              <span className="font-inter text-sm font-medium">Sair</span>
-            </button>
-          </div>
+          ))}
+        </nav>
+
+        {/* Logout Button */}
+        <div className="p-4 border-t border-[#00E5FF]/10">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-500 hover:bg-red-500/10 transition-all duration-200 font-inter font-medium"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Sair</span>
+          </button>
         </div>
       </aside>
     </>

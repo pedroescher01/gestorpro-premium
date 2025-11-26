@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Package, Plus, Search, DollarSign, Layers, Edit, Trash2, ArrowUpDown } from 'lucide-react';
+import { Package, Plus, Search, DollarSign, Layers, Edit, Trash2, ArrowUpDown, Barcode, User, Tag, Calendar } from 'lucide-react';
 import { getProdutos, addProduto, updateProduto, deleteProduto } from '@/lib/storage';
 import { Produto } from '@/lib/types';
 
@@ -222,63 +222,117 @@ export default function ProdutosPage() {
           {produtosFiltrados.map((produto) => (
             <div
               key={produto.id}
-              className="bg-[#0D0D0D] border border-[#00E5FF]/10 rounded-xl p-6 hover:border-[#00E5FF]/30 transition-all"
+              className="bg-gradient-to-br from-[#1a1a1a] to-[#0D0D0D] border border-[#00E5FF]/20 rounded-xl p-6 hover:border-[#00E5FF]/50 hover:shadow-lg hover:shadow-[#00E5FF]/10 transition-all duration-300"
             >
+              {/* Header do Card */}
               <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
-                    <Package className="w-6 h-6 text-[#00E5FF]" />
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="w-14 h-14 bg-gradient-to-br from-[#00E5FF]/20 to-[#00E5FF]/5 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Package className="w-7 h-7 text-[#00E5FF]" />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-inter font-bold text-white">{produto.nome}</h3>
-                    <span className="text-xs text-gray-400 font-inter">{produto.categoria}</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-xl font-inter font-bold text-white mb-1 truncate">{produto.nome}</h3>
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-3.5 h-3.5 text-[#00E5FF]" />
+                      <span className="text-xs text-[#00E5FF] font-inter font-medium">{produto.categoria}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 ml-2">
                   <button
                     onClick={() => handleEdit(produto)}
-                    className="text-[#00E5FF] hover:text-[#00E5FF]/80 transition-colors"
+                    className="text-[#00E5FF] hover:text-[#00E5FF]/80 hover:bg-[#00E5FF]/10 p-2 rounded-lg transition-all"
+                    title="Editar produto"
                   >
                     <Edit className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => handleDeleteProduto(produto.id)}
-                    className="text-red-500 hover:text-red-400 transition-colors"
+                    className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition-all"
+                    title="Excluir produto"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
+              {/* Descrição */}
               {produto.descricao && (
-                <p className="text-sm text-gray-400 font-inter mb-4">{produto.descricao}</p>
+                <div className="mb-4 p-3 bg-[#0D0D0D]/50 rounded-lg border border-[#00E5FF]/5">
+                  <p className="text-sm text-gray-300 font-inter leading-relaxed line-clamp-3">
+                    {produto.descricao}
+                  </p>
+                </div>
               )}
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
+              {/* Informações Principais */}
+              <div className="space-y-3 mb-4">
+                <div className="flex items-center justify-between p-3 bg-[#00E5FF]/5 rounded-lg border border-[#00E5FF]/10">
                   <div className="flex items-center gap-2 text-gray-400">
-                    <DollarSign className="w-4 h-4" />
-                    <span className="text-sm font-inter">Preço</span>
+                    <DollarSign className="w-5 h-5 text-[#00E5FF]" />
+                    <span className="text-sm font-inter font-medium">Preço Unitário</span>
                   </div>
-                  <span className="text-[#00E5FF] font-inter font-bold">
+                  <span className="text-[#00E5FF] font-inter font-bold text-lg">
                     R$ {produto.preco.toFixed(2)}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 bg-[#0D0D0D]/50 rounded-lg border border-[#00E5FF]/10">
                   <div className="flex items-center gap-2 text-gray-400">
-                    <Layers className="w-4 h-4" />
-                    <span className="text-sm font-inter">Estoque</span>
+                    <Layers className="w-5 h-5 text-white" />
+                    <span className="text-sm font-inter font-medium">Estoque Disponível</span>
                   </div>
-                  <span className={`font-inter font-bold ${produto.estoque < 10 ? 'text-orange-500' : 'text-white'}`}>
+                  <span className={`font-inter font-bold text-lg ${produto.estoque < 10 ? 'text-orange-500' : 'text-white'}`}>
                     {produto.estoque} un.
                   </span>
                 </div>
               </div>
 
+              {/* Informações Adicionais */}
+              <div className="space-y-2 pt-4 border-t border-[#00E5FF]/10">
+                {produto.fornecedor && (
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <User className="w-4 h-4 text-[#00E5FF]" />
+                    <span className="text-xs font-inter">Fornecedor:</span>
+                    <span className="text-xs font-inter text-white font-medium">{produto.fornecedor}</span>
+                  </div>
+                )}
+                
+                {produto.codigo_barras && (
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <Barcode className="w-4 h-4 text-[#00E5FF]" />
+                    <span className="text-xs font-inter">Código:</span>
+                    <span className="text-xs font-inter text-white font-mono">{produto.codigo_barras}</span>
+                  </div>
+                )}
+
+                {produto.data_cadastro && (
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <Calendar className="w-4 h-4 text-[#00E5FF]" />
+                    <span className="text-xs font-inter">Cadastrado em:</span>
+                    <span className="text-xs font-inter text-white">
+                      {new Date(produto.data_cadastro).toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Alertas */}
               {produto.estoque < 10 && (
                 <div className="mt-4 pt-4 border-t border-orange-500/20">
-                  <p className="text-xs text-orange-500 font-inter">⚠️ Estoque baixo</p>
+                  <div className="flex items-center gap-2 p-2 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                    <span className="text-orange-500 text-lg">⚠️</span>
+                    <p className="text-xs text-orange-500 font-inter font-medium">Estoque baixo - Reabastecer em breve</p>
+                  </div>
+                </div>
+              )}
+
+              {produto.status === 'inativo' && (
+                <div className="mt-4 pt-4 border-t border-red-500/20">
+                  <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+                    <span className="text-red-500 text-lg">🔴</span>
+                    <p className="text-xs text-red-500 font-inter font-medium">Produto Inativo</p>
+                  </div>
                 </div>
               )}
             </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2, DollarSign, ShoppingBag, ArrowUpDown } from 'lucide-react';
+import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2, DollarSign, ShoppingBag, ArrowUpDown, Calendar, User } from 'lucide-react';
 import { getClientes, addCliente, updateCliente, deleteCliente, getVendas } from '@/lib/storage';
 import { Cliente, Venda } from '@/lib/types';
 
@@ -175,7 +175,7 @@ export default function ClientesPage() {
             resetForm();
             setShowModal(true);
           }}
-          className="flex items-center gap-2 bg-[#00E5FF] text-black px-6 py-3 rounded-lg font-inter font-semibold hover:bg-[#00E5FF]/90 transition-all"
+          className="flex items-center gap-2 bg-gradient-to-r from-[#00E5FF] to-blue-600 text-white px-6 py-3 rounded-lg font-inter font-semibold hover:shadow-lg hover:shadow-[#00E5FF]/20 transition-all"
         >
           <Plus className="w-5 h-5" />
           Novo Cliente
@@ -219,7 +219,7 @@ export default function ClientesPage() {
               resetForm();
               setShowModal(true);
             }}
-            className="flex items-center gap-2 bg-[#00E5FF] text-black px-6 py-3 rounded-lg font-inter font-semibold hover:bg-[#00E5FF]/90 transition-all"
+            className="flex items-center gap-2 bg-gradient-to-r from-[#00E5FF] to-blue-600 text-white px-6 py-3 rounded-lg font-inter font-semibold hover:shadow-lg hover:shadow-[#00E5FF]/20 transition-all"
           >
             <Plus className="w-5 h-5" />
             Adicionar Cliente
@@ -234,75 +234,92 @@ export default function ClientesPage() {
             return (
               <div
                 key={cliente.id}
-                className="bg-[#0D0D0D] border border-[#00E5FF]/10 rounded-xl p-6 hover:border-[#00E5FF]/30 transition-all"
+                className="bg-[#0D0D0D] border border-[#00E5FF]/10 rounded-xl p-6 hover:border-[#00E5FF]/30 hover:shadow-lg hover:shadow-[#00E5FF]/10 transition-all"
               >
+                {/* Header com ícone e nome */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-[#00E5FF]/10 rounded-full flex items-center justify-center">
-                      <Users className="w-6 h-6 text-[#00E5FF]" />
+                    <div className="w-14 h-14 bg-gradient-to-br from-[#00E5FF]/20 to-blue-600/20 rounded-xl flex items-center justify-center border border-[#00E5FF]/30">
+                      <User className="w-7 h-7 text-[#00E5FF]" />
                     </div>
                     <div>
                       <h3 className="text-lg font-inter font-bold text-white">{cliente.nome}</h3>
+                      <span className={`inline-block px-2 py-1 text-xs rounded-full border mt-1 ${
+                        cliente.status === 'ativo'
+                          ? 'bg-green-500/10 text-green-500 border-green-500/20'
+                          : 'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                      }`}>
+                        {cliente.status}
+                      </span>
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleEdit(cliente)}
-                      className="text-[#00E5FF] hover:text-[#00E5FF]/80 transition-colors"
+                      className="p-2 hover:bg-[#00E5FF]/10 rounded-lg transition-colors"
                     >
-                      <Edit className="w-5 h-5" />
+                      <Edit className="w-4 h-4 text-[#00E5FF]" />
                     </button>
                     <button
                       onClick={() => handleDeleteCliente(cliente.id)}
-                      className="text-red-500 hover:text-red-400 transition-colors"
+                      className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
                     >
-                      <Trash2 className="w-5 h-5" />
+                      <Trash2 className="w-4 h-4 text-red-500" />
                     </button>
                   </div>
                 </div>
 
+                {/* Informações de contato */}
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-gray-400">
-                    <Mail className="w-4 h-4" />
+                    <div className="w-8 h-8 bg-[#00E5FF]/10 rounded-lg flex items-center justify-center">
+                      <Mail className="w-4 h-4 text-[#00E5FF]" />
+                    </div>
                     <span className="text-sm font-inter">{cliente.email}</span>
                   </div>
                   {cliente.telefone && (
                     <div className="flex items-center gap-2 text-gray-400">
-                      <Phone className="w-4 h-4" />
+                      <div className="w-8 h-8 bg-[#00E5FF]/10 rounded-lg flex items-center justify-center">
+                        <Phone className="w-4 h-4 text-[#00E5FF]" />
+                      </div>
                       <span className="text-sm font-inter">{cliente.telefone}</span>
                     </div>
                   )}
                   {cliente.endereco && (
                     <div className="flex items-center gap-2 text-gray-400">
-                      <MapPin className="w-4 h-4" />
+                      <div className="w-8 h-8 bg-[#00E5FF]/10 rounded-lg flex items-center justify-center">
+                        <MapPin className="w-4 h-4 text-[#00E5FF]" />
+                      </div>
                       <span className="text-sm font-inter">{cliente.endereco}</span>
                     </div>
                   )}
                 </div>
 
-                {/* Seção de Gastos */}
-                <div className="mt-4 pt-4 border-t border-[#00E5FF]/10 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                {/* Grid de informações financeiras */}
+                <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-[#00E5FF]/10">
+                  <div className="bg-gradient-to-br from-[#00E5FF]/5 to-blue-600/5 border border-[#00E5FF]/20 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
                       <DollarSign className="w-4 h-4 text-[#00E5FF]" />
-                      <span className="text-sm font-inter text-gray-400">Total Gasto:</span>
+                      <span className="text-xs font-inter text-gray-400">Total Gasto</span>
                     </div>
                     <span className="text-lg font-inter font-bold text-[#00E5FF]">
                       R$ {totalGasto.toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ShoppingBag className="w-4 h-4 text-[#00E5FF]" />
-                      <span className="text-sm font-inter text-gray-400">Compras:</span>
+                  <div className="bg-gradient-to-br from-green-500/5 to-emerald-600/5 border border-green-500/20 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ShoppingBag className="w-4 h-4 text-green-500" />
+                      <span className="text-xs font-inter text-gray-400">Compras</span>
                     </div>
-                    <span className="text-sm font-inter font-semibold text-white">
-                      {numeroCompras} {numeroCompras === 1 ? 'compra' : 'compras'}
+                    <span className="text-lg font-inter font-bold text-green-500">
+                      {numeroCompras}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-[#00E5FF]/10">
+                {/* Data de cadastro */}
+                <div className="mt-4 pt-4 border-t border-[#00E5FF]/10 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-gray-500" />
                   <p className="text-xs text-gray-500 font-inter">
                     Cadastrado em {new Date(cliente.data_cadastro).toLocaleDateString('pt-BR')}
                   </p>
@@ -429,7 +446,7 @@ export default function ClientesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-[#00E5FF] text-black px-4 py-3 rounded-lg font-inter font-semibold hover:bg-[#00E5FF]/90 transition-all"
+                  className="flex-1 bg-gradient-to-r from-[#00E5FF] to-blue-600 text-white px-4 py-3 rounded-lg font-inter font-semibold hover:shadow-lg hover:shadow-[#00E5FF]/20 transition-all"
                 >
                   {editingCliente ? 'Salvar' : 'Adicionar'}
                 </button>

@@ -19,12 +19,18 @@ import {
   User,
   Package,
   Briefcase,
-  Factory
+  Factory,
+  Download,
+  Building2,
+  MapPin,
+  Phone,
+  Mail
 } from 'lucide-react';
 import { Orcamento, Cliente, Produto, Servico } from '@/lib/types';
 import { getOrcamentos, createOrcamento, updateOrcamento, deleteOrcamento, aprovarOrcamento, getOrcamentoItens, createOrcamentoItem, deleteOrcamentoItem } from '@/lib/orcamentos';
 import { getClientes, getProdutos, getServicos } from '@/lib/storage';
 import { formatDateBR } from '@/lib/dateUtils';
+import { gerarPDFOrcamento, DadosEmpresa } from '@/lib/pdfGenerator';
 
 export default function OrcamentosPage() {
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
@@ -35,11 +41,33 @@ export default function OrcamentosPage() {
   const [filterStatus, setFilterStatus] = useState<string>('todos');
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showEmpresaModal, setShowEmpresaModal] = useState(false);
   const [editingOrcamento, setEditingOrcamento] = useState<Orcamento | null>(null);
   const [viewingOrcamento, setViewingOrcamento] = useState<Orcamento | null>(null);
   const [loading, setLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [error, setError] = useState<string | null>(null);
+
+  // Dados da empresa para PDF
+  const [dadosEmpresa, setDadosEmpresa] = useState<DadosEmpresa>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dadosEmpresa');
+      return saved ? JSON.parse(saved) : {
+        nome: '',
+        cnpj: '',
+        endereco: '',
+        telefone: '',
+        email: ''
+      };
+    }
+    return {
+      nome: '',
+      cnpj: '',
+      endereco: '',
+      telefone: '',
+      email: ''
+    };
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -113,7 +141,7 @@ export default function OrcamentosPage() {
       if (clientesData.length === 0) {
         setError('Nenhum cliente cadastrado. Cadastre clientes na aba "Clientes" primeiro.');
       } else if (produtosData.length === 0 && servicosData.length === 0) {
-        setError('Nenhum produto ou serviço cadastrado. Cadastre produtos/serviços primeiro.');
+        setError('Nenhum produto ou serviço cadastrado. Cadastre itens primeiro.');
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -159,7 +187,7 @@ export default function OrcamentosPage() {
       }
 
       const valorTotal = itensOrcamento.reduce((acc, item) => 
-        acc + (item.quantidade * item.preco_unitario), 0
+        acc + (parseFloat(item.quantidade.toString()) * parseFloat(item.preco_unitario.toString())), 0
       );
 
       // Preparar dados do orçamento com validação de campos
@@ -172,7 +200,7 @@ export default function OrcamentosPage() {
         requer_mao_obra: Boolean(formData.requer_mao_obra),
         prazo_entrega: formData.prazo_entrega,
         numero: `ORC-${Date.now()}`,
-        valor_total: Number(valorTotal),
+        valor_total: parseFloat(valorTotal.toFixed(2)), // Garantir número decimal válido
         data_criacao: new Date().toISOString().split('T')[0],
         status: 'em_analise' as const,
       };
@@ -189,14 +217,18 @@ export default function OrcamentosPage() {
         // Criar itens do orçamento
         console.log('📦 Criando itens do orçamento...');
         for (const item of itensOrcamento) {
+          const quantidade = parseFloat(item.quantidade.toString());
+          const precoUnitario = parseFloat(item.preco_unitario.toString());
+          const subtotal = parseFloat((quantidade * precoUnitario).toFixed(2));
+          
           await createOrcamentoItem({
             orcamento_id: novoOrcamento.id,
             tipo: item.tipo,
             item_id: String(item.item_id),
             item_nome: String(item.item_nome),
-            quantidade: Number(item.quantidade),
-            preco_unitario: Number(item.preco_unitario),
-            subtotal: Number(item.quantidade * item.preco_unitario)
+            quantidade: quantidade,
+            preco_unitario: precoUnitario,
+            subtotal: subtotal
           });
         }
         console.log('✅ Itens criados com sucesso!');
@@ -252,11 +284,11 @@ export default function OrcamentosPage() {
   };
 
   const handleAprovar = async (id: string) => {
-    if (confirm('Deseja aprovar este orçamento e enviar para produção?')) {
+    if (confirm('Deseja aprovar este orçamento?')) {
       try {
         await aprovarOrcamento(id);
         await carregarDados();
-        alert('Orçamento aprovado e enviado para produção!');
+        alert('Orçamento aprovado com sucesso!');
       } catch (error) {
         console.error('Erro ao aprovar orçamento:', error);
         alert('Erro ao aprovar orçamento');
@@ -279,6 +311,57 @@ export default function OrcamentosPage() {
   const handleView = async (orcamento: Orcamento) => {
     setViewingOrcamento(orcamento);
     setShowViewModal(true);
+  };
+
+  const handleExportarPDF = async (orcamento: Orcamento) => {
+    // Verificar se os dados da empresa estão preenchidos
+    if (!dadosEmpresa.nome || !dadosEmpresa.cnpj || !dadosEmpresa.endereco || !dadosEmpresa.telefone || !dadosEmpresa.email) {
+      if (confirm('Os dados da empresa não estão completos. Deseja configurá-los agora?')) {
+        setShowEmpresaModal(true);
+      }
+      return;
+    }
+
+    try {
+      console.log('🔍 Buscando itens do orçamento:', orcamento.id);
+      
+      // Buscar itens do orçamento
+      const itens = await getOrcamentoItens(orcamento.id);
+      
+      console.log('📦 Itens encontrados:', itens);
+      console.log('📊 Quantidade de itens:', itens?.length || 0);
+      
+      if (!itens || itens.length === 0) {
+        console.warn('⚠️ Nenhum item encontrado para este orçamento');
+        if (!confirm('Este orçamento não possui itens cadastrados. Deseja gerar o PDF mesmo assim?')) {
+          return;
+        }
+      }
+      
+      // Gerar PDF
+      await gerarPDFOrcamento(
+        orcamento,
+        itens || [],
+        dadosEmpresa,
+        orcamento.cliente_nome || 'Cliente não encontrado'
+      );
+      
+      console.log('✅ PDF gerado com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao gerar PDF:', error);
+      alert('Erro ao gerar PDF. Tente novamente.');
+    }
+  };
+
+  const handleSalvarDadosEmpresa = () => {
+    if (!dadosEmpresa.nome || !dadosEmpresa.cnpj || !dadosEmpresa.endereco || !dadosEmpresa.telefone || !dadosEmpresa.email) {
+      alert('Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    localStorage.setItem('dadosEmpresa', JSON.stringify(dadosEmpresa));
+    setShowEmpresaModal(false);
+    alert('Dados da empresa salvos com sucesso!');
   };
 
   const resetForm = () => {
@@ -313,16 +396,19 @@ export default function OrcamentosPage() {
     const novosItens = [...itensOrcamento];
     
     if (campo === 'item_id') {
-      const item = novosItens[index].tipo === 'produto' 
-        ? produtos.find(p => p.id === valor)
-        : servicos.find(s => s.id === valor);
+      let item;
+      if (novosItens[index].tipo === 'produto') {
+        item = produtos.find(p => p.id === valor);
+      } else if (novosItens[index].tipo === 'servico') {
+        item = servicos.find(s => s.id === valor);
+      }
       
       if (item) {
         novosItens[index] = {
           ...novosItens[index],
           item_id: valor,
           item_nome: item.nome,
-          preco_unitario: item.preco
+          preco_unitario: 'preco' in item ? item.preco : item.preco_unitario
         };
       }
     } else {
@@ -392,24 +478,33 @@ export default function OrcamentosPage() {
               Gerencie todos os orçamentos da sua empresa
             </p>
           </div>
-          <button
-            onClick={() => {
-              if (clientes.length === 0) {
-                alert('Cadastre clientes primeiro na aba "Clientes"');
-                return;
-              }
-              if (produtos.length === 0 && servicos.length === 0) {
-                alert('Cadastre produtos ou serviços primeiro');
-                return;
-              }
-              resetForm();
-              setShowModal(true);
-            }}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#00E5FF] to-blue-600 text-white rounded-lg hover:shadow-lg hover:shadow-[#00E5FF]/20 transition-all duration-300 font-inter font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            Novo Orçamento
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowEmpresaModal(true)}
+              className="flex items-center gap-2 px-4 py-3 bg-[#1A1A1A] border border-[#00E5FF]/20 text-[#00E5FF] rounded-lg hover:bg-[#00E5FF]/10 transition-all duration-300 font-inter font-medium"
+            >
+              <Building2 className="w-5 h-5" />
+              Dados da Empresa
+            </button>
+            <button
+              onClick={() => {
+                if (clientes.length === 0) {
+                  alert('Cadastre clientes primeiro na aba "Clientes"');
+                  return;
+                }
+                if (produtos.length === 0 && servicos.length === 0) {
+                  alert('Cadastre produtos ou serviços primeiro');
+                  return;
+                }
+                resetForm();
+                setShowModal(true);
+              }}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#00E5FF] to-blue-600 text-white rounded-lg hover:shadow-lg hover:shadow-[#00E5FF]/20 transition-all duration-300 font-inter font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              Novo Orçamento
+            </button>
+          </div>
         </div>
 
         {/* Aviso de erro */}
@@ -462,7 +557,7 @@ export default function OrcamentosPage() {
               <div>
                 <p className="text-gray-400 text-sm">Valor Total</p>
                 <p className="text-2xl font-bold text-[#00E5FF]">
-                  R$ {orcamentos.reduce((acc, o) => acc + o.valor_total, 0).toFixed(2)}
+                  {orcamentos.reduce((acc, o) => acc + o.valor_total, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
               </div>
               <DollarSign className="w-8 h-8 text-[#00E5FF]" />
@@ -523,11 +618,14 @@ export default function OrcamentosPage() {
           filteredOrcamentos.map((orcamento) => (
             <div
               key={orcamento.id}
-              className="bg-[#0D0D0D] border border-[#00E5FF]/10 rounded-xl p-6 hover:border-[#00E5FF]/30 transition-all"
+              className="bg-gradient-to-br from-[#1A1A1A] to-[#0D0D0D] border border-[#00E5FF]/20 rounded-xl p-6 hover:border-[#00E5FF]/40 hover:shadow-lg hover:shadow-[#00E5FF]/10 transition-all"
             >
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-[#00E5FF]/10 border border-[#00E5FF]/20">
+                      <FileText className="w-5 h-5 text-[#00E5FF]" />
+                    </div>
                     <h3 className="text-xl font-bold text-white">{orcamento.numero}</h3>
                     {getStatusBadge(orcamento.status)}
                     {orcamento.requer_mao_obra && (
@@ -537,34 +635,68 @@ export default function OrcamentosPage() {
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <User className="w-4 h-4 text-[#00E5FF]" />
-                      <span>{orcamento.cliente_nome}</span>
+                  
+                  {/* Descrição em destaque */}
+                  <div className="bg-[#0D0D0D]/50 border border-[#00E5FF]/10 rounded-lg p-3 mb-3">
+                    <p className="text-gray-300 text-sm">{orcamento.descricao}</p>
+                  </div>
+
+                  {/* Grid de informações */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="bg-[#0D0D0D]/50 border border-[#00E5FF]/10 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <User className="w-4 h-4 text-[#00E5FF]" />
+                        <span className="text-xs text-gray-400">Cliente</span>
+                      </div>
+                      <p className="text-sm text-white font-medium">{orcamento.cliente_nome}</p>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <Calendar className="w-4 h-4 text-[#00E5FF]" />
-                      <span>{formatDateBR(orcamento.data_criacao)}</span>
+                    
+                    <div className="bg-[#0D0D0D]/50 border border-[#00E5FF]/10 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="w-4 h-4 text-[#00E5FF]" />
+                        <span className="text-xs text-gray-400">Criação</span>
+                      </div>
+                      <p className="text-sm text-white font-medium">{formatDateBR(orcamento.data_criacao)}</p>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <AlertCircle className="w-4 h-4 text-[#00E5FF]" />
-                      <span>Validade: {formatDateBR(orcamento.data_validade)}</span>
+                    
+                    <div className="bg-[#0D0D0D]/50 border border-[#00E5FF]/10 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertCircle className="w-4 h-4 text-[#00E5FF]" />
+                        <span className="text-xs text-gray-400">Validade</span>
+                      </div>
+                      <p className="text-sm text-white font-medium">{formatDateBR(orcamento.data_validade)}</p>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-400">
-                      {orcamento.tipo === 'produto' ? <Package className="w-4 h-4 text-[#00E5FF]" /> : 
-                       orcamento.tipo === 'servico' ? <Briefcase className="w-4 h-4 text-[#00E5FF]" /> :
-                       <Package className="w-4 h-4 text-[#00E5FF]" />}
-                      <span className="capitalize">{orcamento.tipo}</span>
+                    
+                    <div className="bg-[#0D0D0D]/50 border border-[#00E5FF]/10 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        {orcamento.tipo === 'produto' ? <Package className="w-4 h-4 text-[#00E5FF]" /> : 
+                         orcamento.tipo === 'servico' ? <Briefcase className="w-4 h-4 text-[#00E5FF]" /> :
+                         <Package className="w-4 h-4 text-[#00E5FF]" />}
+                        <span className="text-xs text-gray-400">Tipo</span>
+                      </div>
+                      <p className="text-sm text-white font-medium capitalize">{orcamento.tipo}</p>
                     </div>
                   </div>
-                  <p className="text-gray-400 mt-2 line-clamp-2">{orcamento.descricao}</p>
-                  <div className="mt-3">
-                    <span className="text-2xl font-bold text-[#00E5FF]">
-                      R$ {orcamento.valor_total.toFixed(2)}
-                    </span>
+
+                  {/* Valor em destaque */}
+                  <div className="mt-4 bg-gradient-to-r from-[#00E5FF]/10 to-blue-600/10 border border-[#00E5FF]/20 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400 text-sm">Valor Total</span>
+                      <span className="text-3xl font-bold text-[#00E5FF]">
+                        {orcamento.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    </div>
                   </div>
                 </div>
+                
                 <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleExportarPDF(orcamento)}
+                    className="px-4 py-2 bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg text-[#00E5FF] hover:bg-[#00E5FF]/10 transition-all flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    PDF
+                  </button>
                   <button
                     onClick={() => handleView(orcamento)}
                     className="px-4 py-2 bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg text-[#00E5FF] hover:bg-[#00E5FF]/10 transition-all flex items-center gap-2"
@@ -602,6 +734,108 @@ export default function OrcamentosPage() {
           ))
         )}
       </div>
+
+      {/* Modal Dados da Empresa */}
+      {showEmpresaModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0D0D0D] border border-[#00E5FF]/20 rounded-xl p-6 w-full max-w-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Building2 className="w-6 h-6 text-[#00E5FF]" />
+                Dados da Empresa
+              </h2>
+              <button
+                onClick={() => setShowEmpresaModal(false)}
+                className="text-gray-400 hover:text-white transition-all"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Nome da Empresa *
+                </label>
+                <input
+                  type="text"
+                  value={dadosEmpresa.nome}
+                  onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, nome: e.target.value })}
+                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg text-white focus:outline-none focus:border-[#00E5FF] transition-all"
+                  placeholder="Ex: Minha Empresa Ltda"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  CNPJ *
+                </label>
+                <input
+                  type="text"
+                  value={dadosEmpresa.cnpj}
+                  onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, cnpj: e.target.value })}
+                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg text-white focus:outline-none focus:border-[#00E5FF] transition-all"
+                  placeholder="00.000.000/0000-00"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Endereço Completo *
+                </label>
+                <input
+                  type="text"
+                  value={dadosEmpresa.endereco}
+                  onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, endereco: e.target.value })}
+                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg text-white focus:outline-none focus:border-[#00E5FF] transition-all"
+                  placeholder="Rua, número, bairro, cidade - UF"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Telefone *
+                </label>
+                <input
+                  type="text"
+                  value={dadosEmpresa.telefone}
+                  onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, telefone: e.target.value })}
+                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg text-white focus:outline-none focus:border-[#00E5FF] transition-all"
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  E-mail *
+                </label>
+                <input
+                  type="email"
+                  value={dadosEmpresa.email}
+                  onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, email: e.target.value })}
+                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg text-white focus:outline-none focus:border-[#00E5FF] transition-all"
+                  placeholder="contato@empresa.com.br"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowEmpresaModal(false)}
+                className="flex-1 px-6 py-3 bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg text-white hover:bg-[#00E5FF]/10 transition-all font-inter font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSalvarDadosEmpresa}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-[#00E5FF] to-blue-600 text-white rounded-lg hover:shadow-lg hover:shadow-[#00E5FF]/20 transition-all font-inter font-medium"
+              >
+                Salvar Dados
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Novo/Editar Orçamento */}
       {showModal && (
@@ -761,8 +995,8 @@ export default function OrcamentosPage() {
                           >
                             <option value="">Selecione</option>
                             {item.tipo === 'produto' 
-                              ? produtos.map(p => <option key={p.id} value={p.id}>{p.nome} - R$ {p.preco.toFixed(2)}</option>)
-                              : servicos.map(s => <option key={s.id} value={s.id}>{s.nome} - R$ {s.preco.toFixed(2)}</option>)
+                              ? produtos.map(p => <option key={p.id} value={p.id}>{p.nome} - {p.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>)
+                              : servicos.map(s => <option key={s.id} value={s.id}>{s.nome} - {s.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>)
                             }
                           </select>
                         </div>
@@ -770,9 +1004,10 @@ export default function OrcamentosPage() {
                           <label className="block text-xs text-gray-400 mb-1">Qtd</label>
                           <input
                             type="number"
-                            min="1"
+                            min="0.01"
+                            step="0.01"
                             value={item.quantidade}
-                            onChange={(e) => atualizarItem(index, 'quantidade', parseInt(e.target.value))}
+                            onChange={(e) => atualizarItem(index, 'quantidade', parseFloat(e.target.value))}
                             className="w-full px-3 py-2 bg-[#0D0D0D] border border-[#00E5FF]/20 rounded text-white text-sm focus:outline-none focus:border-[#00E5FF]"
                           />
                         </div>
@@ -780,7 +1015,7 @@ export default function OrcamentosPage() {
                           <div className="flex-1">
                             <label className="block text-xs text-gray-400 mb-1">Subtotal</label>
                             <div className="px-3 py-2 bg-[#0D0D0D] border border-[#00E5FF]/20 rounded text-[#00E5FF] text-sm font-bold">
-                              R$ {(item.quantidade * item.preco_unitario).toFixed(2)}
+                              {(item.quantidade * item.preco_unitario).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </div>
                           </div>
                           <button
@@ -801,7 +1036,7 @@ export default function OrcamentosPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-lg font-bold text-white">Valor Total:</span>
                       <span className="text-2xl font-bold text-[#00E5FF]">
-                        R$ {itensOrcamento.reduce((acc, item) => acc + (item.quantidade * item.preco_unitario), 0).toFixed(2)}
+                        {itensOrcamento.reduce((acc, item) => acc + (item.quantidade * item.preco_unitario), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
                     </div>
                   </div>
@@ -900,7 +1135,7 @@ export default function OrcamentosPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-xl font-bold text-white">Valor Total:</span>
                   <span className="text-3xl font-bold text-[#00E5FF]">
-                    R$ {viewingOrcamento.valor_total.toFixed(2)}
+                    {viewingOrcamento.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </span>
                 </div>
               </div>

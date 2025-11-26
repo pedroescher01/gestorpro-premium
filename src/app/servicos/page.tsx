@@ -1,6 +1,6 @@
 'use client';
 
-import { Briefcase, Plus, Search, Edit, Trash2, Clock } from 'lucide-react';
+import { Briefcase, Plus, Search, Edit, Trash2, Clock, DollarSign, Tag, CheckCircle, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getServicos, addServico, updateServico, deleteServico } from '@/lib/storage';
 import { Servico } from '@/lib/types';
@@ -169,14 +169,33 @@ export default function ServicosPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredServicos.map((servico) => (
-            <div key={servico.id} className="bg-[#1A1A1A] border border-[#00E5FF]/20 rounded-lg p-6 hover:border-[#00E5FF]/40 transition-all">
+            <div 
+              key={servico.id} 
+              className="bg-gradient-to-br from-[#1A1A1A] to-[#0D0D0D] border border-[#00E5FF]/20 rounded-xl p-6 hover:border-[#00E5FF]/40 hover:shadow-lg hover:shadow-[#00E5FF]/10 transition-all"
+            >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-white mb-1">{servico.nome}</h3>
-                  <p className="text-sm text-gray-400 mb-2">{servico.descricao}</p>
-                  <span className="inline-block px-2 py-1 text-xs rounded-full bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/20">
-                    {servico.categoria}
-                  </span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-2 rounded-lg bg-[#00E5FF]/10 border border-[#00E5FF]/20">
+                      <Briefcase className="w-4 h-4 text-[#00E5FF]" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">{servico.nome}</h3>
+                  </div>
+                  
+                  {/* Status Badge */}
+                  <div className="mb-3">
+                    {servico.status === 'ativo' ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-full bg-green-500/10 text-green-500 border border-green-500/20">
+                        <CheckCircle className="w-3 h-3" />
+                        Ativo
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
+                        <XCircle className="w-3 h-3" />
+                        Inativo
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -193,14 +212,42 @@ export default function ServicosPage() {
                   </button>
                 </div>
               </div>
-              <div className="flex items-center justify-between pt-4 border-t border-gray-700">
-                <div className="flex items-center gap-2 text-gray-400">
-                  <Clock className="w-4 h-4" />
-                  <span className="text-sm">{servico.duracao} min</span>
+
+              {/* Descrição */}
+              <div className="bg-[#0D0D0D]/50 border border-[#00E5FF]/10 rounded-lg p-3 mb-4">
+                <p className="text-sm text-gray-300 line-clamp-2">{servico.descricao}</p>
+              </div>
+
+              {/* Categoria */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Tag className="w-4 h-4 text-[#00E5FF]" />
+                  <span className="text-xs text-gray-400">Categoria</span>
                 </div>
-                <span className="text-xl font-bold text-[#00E5FF]">
-                  R$ {servico.preco.toFixed(2)}
+                <span className="inline-block px-3 py-1 text-sm rounded-full bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/20">
+                  {servico.categoria}
                 </span>
+              </div>
+
+              {/* Grid de Informações */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-[#0D0D0D]/50 border border-[#00E5FF]/10 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="w-4 h-4 text-[#00E5FF]" />
+                    <span className="text-xs text-gray-400">Duração</span>
+                  </div>
+                  <p className="text-sm text-white font-bold">{servico.duracao} min</p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-[#00E5FF]/10 to-blue-600/10 border border-[#00E5FF]/20 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className="w-4 h-4 text-[#00E5FF]" />
+                    <span className="text-xs text-gray-400">Preço</span>
+                  </div>
+                  <p className="text-lg font-bold text-[#00E5FF]">
+                    R$ {servico.preco.toFixed(2)}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
